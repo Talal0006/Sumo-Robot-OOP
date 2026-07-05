@@ -6,7 +6,7 @@ This project upgrades a standard Arduino-based Sumo Robot by refactoring its sof
 **The Problem:** In standard Arduino projects, logic is typically crammed into the `setup()` and `loop()` functions, resulting in messy, repeated, and hard-to-maintain code[cite: 1]. 
 **The Solution:** This project utilizes C++ OOP principles—specifically **Encapsulation, Abstraction, Composition, and Modularity**—to create a scalable, easily updatable robot control system[cite: 1].
 
-**Contributors:** Affaq Atiq, Abdullah Hassan, Talal Arshad, Hassan Irfan[cite: 1].
+**Contributors:** Talal Arshad Abbasi[cite: 1].
 
 ---
 
