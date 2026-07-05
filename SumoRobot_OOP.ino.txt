@@ -1,0 +1,219 @@
+/*
+  ====== Bluetooth Controlled Robot (OOP Version) ======
+  Author: Talal Arshad Abbasi
+  Description:
+    Object-Oriented version of Bluetooth-controlled robot using L298N motor driver.
+    Demonstrates OOP concepts: Encapsulation, Abstraction, Composition.
+    Controlled via Bluetooth app sending characters: 
+      'F', 'B', 'L', 'R', 'G', 'I', 'H', 'J', 'S'
+
+  Hardware:
+    - L298N Motor Driver
+    - Arduino UNO / Nano
+    - HC-05 Bluetooth Module
+    - LED indicator
+*/
+
+#include <Arduino.h>
+
+/* ============================
+   ===== MotorControl Class ====
+   Handles all motor operations.
+   ============================ */
+class MotorControl {
+  private:
+    int in1, in2, in3, in4;
+    int speed;       // 0 - 255
+    int turnRadius;  // 0 - 255
+    int brakeTime;   // delay time for braking
+    bool brakeOnOff; // 1 = on, 0 = off
+
+  public:
+    MotorControl(int pin1, int pin2, int pin3, int pin4) {
+      in1 = pin1; in2 = pin2; in3 = pin3; in4 = pin4;
+      speed = 255;
+      turnRadius = 150;
+      brakeTime = 45;
+      brakeOnOff = true;
+    }
+
+    void begin() {
+      pinMode(in1, OUTPUT);
+      pinMode(in2, OUTPUT);
+      pinMode(in3, OUTPUT);
+      pinMode(in4, OUTPUT);
+      stop();
+    }
+
+    void setSpeed(int spd) { speed = spd; }
+    void setTurnRadius(int radius) { turnRadius = radius; }
+    void setBrake(bool state) { brakeOnOff = state; }
+
+    void forward() {
+      analogWrite(in1, speed);
+      analogWrite(in3, speed);
+    }
+
+    void backward() {
+      analogWrite(in2, speed);
+      analogWrite(in4, speed);
+    }
+
+    void left() {
+      analogWrite(in3, speed);
+      analogWrite(in2, speed);
+    }
+
+    void right() {
+      analogWrite(in4, speed);
+      analogWrite(in1, speed);
+    }
+
+    void forwardLeft() {
+      analogWrite(in1, turnRadius);
+      analogWrite(in3, speed);
+    }
+
+    void forwardRight() {
+      analogWrite(in1, speed);
+      analogWrite(in3, turnRadius);
+    }
+
+    void backLeft() {
+      analogWrite(in2, turnRadius);
+      analogWrite(in4, speed);
+    }
+
+    void backRight() {
+      analogWrite(in2, speed);
+      analogWrite(in4, turnRadius);
+    }
+
+    void stop() {
+      analogWrite(in1, 0);
+      analogWrite(in2, 0);
+      analogWrite(in3, 0);
+      analogWrite(in4, 0);
+    }
+
+    void brake() {
+      if (brakeOnOff) {
+        digitalWrite(in1, HIGH);
+        digitalWrite(in2, HIGH);
+        digitalWrite(in3, HIGH);
+        digitalWrite(in4, HIGH);
+        delay(brakeTime);
+        stop();
+      }
+    }
+};
+
+/* =============================
+   ===== BluetoothControl Class =
+   Handles serial communication.
+   ============================= */
+class BluetoothControl {
+  public:
+    void begin(long baudRate = 9600) {
+      Serial.begin(baudRate);
+    }
+
+    bool available() {
+      return Serial.available() > 0;
+    }
+
+    char readCommand() {
+      if (Serial.available()) {
+        char cmd = Serial.read();
+        return cmd;
+      }
+      return 0;
+    }
+};
+
+/* =============================
+   ===== Robot Class ============
+   Main class combining components.
+   ============================= */
+class Robot {
+  private:
+    MotorControl& motors;
+    BluetoothControl& bt;
+    int ledPin;
+    int lastCommand;
+
+  public:
+    Robot(MotorControl& m, BluetoothControl& b, int led)
+      : motors(m), bt(b), ledPin(led) {
+      lastCommand = 0;
+    }
+
+    void begin() {
+      motors.begin();
+      pinMode(ledPin, OUTPUT);
+      digitalWrite(ledPin, LOW);
+      bt.begin(9600);
+      Serial.println("Bluetooth Robot Ready!");
+    }
+
+    void executeCommand(char cmd) {
+      motors.stop(); // always start from stop
+
+      switch (cmd) {
+        case 'F': motors.forward(); Serial.println("Forward"); break;
+        case 'B': motors.backward(); Serial.println("Backward"); break;
+        case 'L': motors.left(); Serial.println("Left"); break;
+        case 'R': motors.right(); Serial.println("Right"); break;
+        case 'G': motors.forwardLeft(); Serial.println("Forward Left"); break;
+        case 'I': motors.forwardRight(); Serial.println("Forward Right"); break;
+        case 'H': motors.backLeft(); Serial.println("Back Left"); break;
+        case 'J': motors.backRight(); Serial.println("Back Right"); break;
+        case 'S':
+          motors.brake();
+          digitalWrite(ledPin, HIGH);
+          Serial.println("Stopped with Brake");
+          break;
+        default:
+          Serial.println("Unknown Command");
+          break;
+      }
+
+      lastCommand = cmd;
+    }
+
+    void update() {
+      if (bt.available()) {
+        char cmd = bt.readCommand();
+        if (cmd) {
+          executeCommand(cmd);
+        }
+      }
+    }
+};
+
+/* =============================
+   ===== Pin Configuration =====
+   ============================= */
+#define IN1 5
+#define IN2 6
+#define IN3 10
+#define IN4 11
+#define LED 13
+
+/* =============================
+   ===== Object Creation =======
+   ============================= */
+MotorControl motor(IN1, IN2, IN3, IN4);
+BluetoothControl bluetooth;
+Robot robot(motor, bluetooth, LED);
+
+/* =============================
+   ===== Setup & Loop ==========
+   ============================= */
+void setup() {
+  robot.begin();
+}
+
+void loop() {
+  robot.update();
+}  
